@@ -2,6 +2,7 @@
 #include <SD.h>
 #include <SPI.h>
 #include <driver/i2s.h>
+#include <vector>
 
 // Karta SD
 #define SD_CS 5 // Pin CS dla karty SD
@@ -10,12 +11,38 @@
 #define I2S_SPK_WS 25
 #define I2S_SPK_BCK 26
 #define I2S_SPK_DOUT 22
+#define BUTTON_PIN 4 // Pin wejściowy przycisku (z pull-up)
+#define OUTPUT_PIN1 12 // Pierwszy pin wyjściowy
+#define OUTPUT_PIN2 14 // Drugi pin wyjściowy
 
 #define SAMPLE_RATE 16000 // Częstotliwość próbkowania
 #define BUFFER_SIZE 512 // Rozmiar bufora
 
+enum SequenceState
+{
+  PIN1_ON, // PIN1 włączony na 10ms
+  PAUSE1, // Pauza 20ms po PIN1
+  PIN2_ON, // PIN2 włączony na 10ms
+  PAUSE2 // Pauza 20ms po PIN2
+};
+
+// Zmienne globalne
+SequenceState currentState = PIN1_ON;
+unsigned long previousMillis = 0;
+unsigned long pin1_interval = 2; // 10ms dla PIN1
+unsigned long pause_interval = 25; // 20ms pauza
+unsigned long pin2_interval = 2; // 10ms dla PIN2
+
+bool outputState = false;
+
 File audioFile;
 bool isPlaying = false;
+
+std::vector<String> fileNames;
+
+// Zmienna do śledzenia czasu dla losowania
+unsigned long lastRandomTime = 0;
+const unsigned long randomInterval = 60000; // 1 minuta w milisekundach
 
 void setupI2SSpeaker()
 {
@@ -94,6 +121,9 @@ void listDir(fs::FS& fs, const char* dirname, uint8_t levels)
       Serial.print(file.name());
       Serial.print("  ROZMIAR: ");
       Serial.println(file.size());
+
+      // Dodaj nazwę pliku do globalnego wektora
+      fileNames.push_back(String(file.name()));
     }
     file = root.openNextFile();
   }
@@ -119,12 +149,40 @@ void read_config()
   Serial.println(number);
 }
 
+String getRandomFileName()
+{
+  // Sprawdź czy wektor nie jest pusty
+  if (fileNames.size() == 0)
+  {
+    Serial.println("Błąd: brak plików w wektorze!");
+    return "";
+  }
+
+  // Wylosuj indeks z przedziału 0 do (rozmiar_wektora - 1)
+  int randomIndex = random(0, fileNames.size());
+
+  Serial.printf("Wylosowano plik o indeksie %d: %s\n", randomIndex, fileNames[randomIndex].c_str());
+
+  return fileNames[randomIndex];
+}
+
 void setup()
 {
+  pinMode(BUTTON_PIN, INPUT_PULLUP); // Przycisk z wewnętrznym pull-up
+  pinMode(OUTPUT_PIN1, OUTPUT); // Pierwszy pin wyjściowy
+  pinMode(OUTPUT_PIN2, OUTPUT); // Drugi pin wyjściowy
+
+  // Początkowy stan - oba wyjścia wyłączone
+  digitalWrite(OUTPUT_PIN1, LOW);
+  digitalWrite(OUTPUT_PIN2, LOW);
+
   // for debuging
   Serial.begin(115200);
   while (!Serial)
   {}
+
+  // Inicjalizacja generatora liczb losowych
+  randomSeed(analogRead(0));
 
   if (!SD.begin(SD_CS))
   {
@@ -141,9 +199,101 @@ void setup()
   listDir(SD, "/records", 0);
 
   read_config();
+
+  // Ustaw początkowy czas
+  lastRandomTime = millis();
 }
 
 void loop()
 {
-  // put your main code here, to run repeatedly:
+  bool buttonPressed = (digitalRead(BUTTON_PIN) == LOW);
+
+  if (buttonPressed)
+  {
+    // Przycisk naciśnięty - obsługa sekwencji
+    unsigned long currentMillis = millis();
+    unsigned long currentInterval;
+
+    // Określ aktualny interwał na podstawie stanu
+    switch (currentState)
+    {
+      case PIN1_ON:
+        currentInterval = pin1_interval;
+        break;
+      case PAUSE1:
+        currentInterval = pause_interval;
+        break;
+      case PIN2_ON:
+        currentInterval = pin2_interval;
+        break;
+      case PAUSE2:
+        currentInterval = pause_interval;
+        break;
+    }
+
+    if (currentMillis - previousMillis >= currentInterval)
+    {
+      previousMillis = currentMillis;
+
+      // Przejście do następnego stanu
+      switch (currentState)
+      {
+        case PIN1_ON:
+          // PIN1 był włączony, teraz pauza
+          digitalWrite(OUTPUT_PIN1, LOW);
+          digitalWrite(OUTPUT_PIN2, LOW);
+          currentState = PAUSE1;
+          break;
+
+        case PAUSE1:
+          // Koniec pauzy po PIN1, włącz PIN2
+          digitalWrite(OUTPUT_PIN1, LOW);
+          digitalWrite(OUTPUT_PIN2, HIGH);
+          currentState = PIN2_ON;
+          break;
+
+        case PIN2_ON:
+          // PIN2 był włączony, teraz pauza
+          digitalWrite(OUTPUT_PIN1, LOW);
+          digitalWrite(OUTPUT_PIN2, LOW);
+          currentState = PAUSE2;
+          break;
+
+        case PAUSE2:
+          // Koniec pauzy po PIN2, wróć do PIN1
+          digitalWrite(OUTPUT_PIN1, HIGH);
+          digitalWrite(OUTPUT_PIN2, LOW);
+          currentState = PIN1_ON;
+          break;
+      }
+    }
+  }
+  else
+  {
+    // Przycisk nie naciśnięty - wyłącz oba wyjścia
+    digitalWrite(OUTPUT_PIN1, LOW);
+    digitalWrite(OUTPUT_PIN2, LOW);
+
+    // Reset stanu dla następnego naciśnięcia
+    currentState = PIN1_ON;
+    previousMillis = millis(); // Reset timera
+  }
+
+  // if (currentTime - lastRandomTime >= randomInterval)
+  // {
+  //   // Wylosuj i wypisz nazwę pliku
+  //   String randomName = getRandomFileName();
+  //   if (randomName != "")
+  //   {
+  //     Serial.println("=== LOSOWANIE CO MINUTĘ ===");
+  //     Serial.println("Wylosowana nazwa: " + randomName);
+  //     Serial.println("===========================");
+  //   }
+
+  //   // Zaktualizuj czas ostatniego losowania
+  //   lastRandomTime = currentTime;
+  // }
+
+  // Tutaj możesz dodać inne zadania loop
+  // np. obsługa przycisków, czujników itp.
 }
