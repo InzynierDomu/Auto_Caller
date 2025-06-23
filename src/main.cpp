@@ -20,18 +20,19 @@
 
 enum SequenceState
 {
+  IDLE, // Stan spoczynku
   PIN1_ON, // PIN1 włączony na 10ms
   PAUSE1, // Pauza 20ms po PIN1
   PIN2_ON, // PIN2 włączony na 10ms
   PAUSE2 // Pauza 20ms po PIN2
 };
 
-// Zmienne globalne
-SequenceState currentState = PIN1_ON;
-unsigned long previousMillis = 0;
-unsigned long pin1_interval = 2; // 10ms dla PIN1
-unsigned long pause_interval = 25; // 20ms pauza
-unsigned long pin2_interval = 2; // 10ms dla PIN2
+// Zmienne globalne dla sekwencji
+SequenceState currentSequenceState = IDLE;
+unsigned long previousMillisSequence = 0;
+unsigned long pin1_duration = 2; // 10ms dla PIN1
+unsigned long pause_duration = 25; // 20ms pauza
+unsigned long pin2_duration = 2; // 10ms dla PIN2
 
 bool outputState = false;
 
@@ -40,9 +41,13 @@ bool isPlaying = false;
 
 std::vector<String> fileNames;
 
-// Zmienna do śledzenia czasu dla losowania
+// Zmienne globalne dla ogólnego timera (co minutę)
 unsigned long lastRandomTime = 0;
 const unsigned long randomInterval = 60000; // 1 minuta w milisekundach
+
+// Zmienne globalne dla timera zakończenia sekwencji (5 sekund)
+unsigned long sequenceStartTime = 0;
+const unsigned long maxSequenceDuration = 5000; // 5 sekund w milisekundach
 
 void setupI2SSpeaker()
 {
@@ -166,6 +171,101 @@ String getRandomFileName()
   return fileNames[randomIndex];
 }
 
+void startPinSequence()
+{
+  Serial.println("Aktywacja sekwencji pinów.");
+  currentSequenceState = PIN1_ON;
+  previousMillisSequence = millis(); // Resetuj timer dla przejść w sekwencji
+  sequenceStartTime = millis(); // Zapisz czas rozpoczęcia całej sekwencji
+  digitalWrite(OUTPUT_PIN1, HIGH); // Włącz PIN1 od razu
+  digitalWrite(OUTPUT_PIN2, LOW);
+}
+
+void stopPinSequence()
+{
+  if (currentSequenceState != IDLE)
+  {
+    Serial.println("Sekwencja zakończona.");
+    digitalWrite(OUTPUT_PIN1, LOW);
+    digitalWrite(OUTPUT_PIN2, LOW);
+    currentSequenceState = IDLE;
+  }
+}
+
+void handlePinSequence()
+{
+  unsigned long currentMillis = millis();
+  unsigned long currentDuration;
+
+  // Sprawdź, czy sekwencja już trwa dłużej niż 5 sekund
+  if (currentMillis - sequenceStartTime >= maxSequenceDuration)
+  {
+    stopPinSequence(); // Zatrzymaj sekwencję, jeśli przekroczono 5 sekund
+    return;
+  }
+
+  // Określ aktualny czas trwania na podstawie stanu
+  switch (currentSequenceState)
+  {
+    case PIN1_ON:
+      currentDuration = pin1_duration;
+      break;
+    case PAUSE1:
+      currentDuration = pause_duration;
+      break;
+    case PIN2_ON:
+      currentDuration = pin2_duration;
+      break;
+    case PAUSE2:
+      currentDuration = pause_duration;
+      break;
+    case IDLE: // Nie powinno się tutaj znaleźć, ale zabezpieczenie
+      return;
+  }
+
+  if (currentMillis - previousMillisSequence >= currentDuration)
+  {
+    previousMillisSequence = currentMillis;
+
+    // Przejście do następnego stanu
+    switch (currentSequenceState)
+    {
+      case PIN1_ON:
+        // PIN1 był włączony, teraz pauza
+        digitalWrite(OUTPUT_PIN1, LOW);
+        digitalWrite(OUTPUT_PIN2, LOW);
+        currentSequenceState = PAUSE1;
+        break;
+
+      case PAUSE1:
+        // Koniec pauzy po PIN1, włącz PIN2
+        digitalWrite(OUTPUT_PIN1, LOW);
+        digitalWrite(OUTPUT_PIN2, HIGH);
+        currentSequenceState = PIN2_ON;
+        break;
+
+      case PIN2_ON:
+        // PIN2 był włączony, teraz pauza
+        digitalWrite(OUTPUT_PIN1, LOW);
+        digitalWrite(OUTPUT_PIN2, LOW);
+        currentSequenceState = PAUSE2;
+        break;
+
+      case PAUSE2:
+        // Koniec pauzy po PIN2, wróć do PIN1 (sekwencja zapętla się)
+        // Jeśli chcemy, aby sekwencja zatrzymywała się po jednym przebiegu,
+        // zmieniamy to na stopPinSequence();
+        digitalWrite(OUTPUT_PIN1, HIGH);
+        digitalWrite(OUTPUT_PIN2, LOW);
+        currentSequenceState = PIN1_ON; // Zapętlenie sekwencji
+        // previousMillisSequence = currentMillis; // Można zresetować timer tutaj dla świeżego startu nowego cyklu w ramach 5s
+        break;
+      case IDLE:
+        break; // Niewykorzystane, ale dla kompletności
+    }
+  }
+}
+
 void setup()
 {
   pinMode(BUTTON_PIN, INPUT_PULLUP); // Przycisk z wewnętrznym pull-up
@@ -206,94 +306,46 @@ void setup()
 
 void loop()
 {
-  bool buttonPressed = (digitalRead(BUTTON_PIN) == LOW);
+  unsigned long currentTime = millis();
 
-  if (buttonPressed)
+  // Obsługa przycisku - jeśli naciśnięty, zatrzymaj sekwencję (jeśli aktywna)
+  // Przycisk działa jak "wyłącznik" / "reset"
+  static bool lastButtonState = HIGH; // Pamiętaj poprzedni stan przycisku
+  bool currentButtonState = digitalRead(BUTTON_PIN);
+
+  if (currentButtonState == LOW && lastButtonState == HIGH) // Przycisk został naciśnięty (zbocze opadające)
   {
-    // Przycisk naciśnięty - obsługa sekwencji
-    unsigned long currentMillis = millis();
-    unsigned long currentInterval;
+    Serial.println("Przycisk naciśnięty - zatrzymanie sekwencji.");
+    stopPinSequence(); // Zatrzymaj sekwencję
+  }
+  lastButtonState = currentButtonState;
 
-    // Określ aktualny interwał na podstawie stanu
-    switch (currentState)
+  // Sekcja, która będzie aktywować sekwencję co minutę
+  if (currentTime - lastRandomTime >= randomInterval)
+  {
+    // Wylosuj i wypisz nazwę pliku (teraz to reprezentuje "numer")
+    String randomName = getRandomFileName();
+    if (randomName != "")
     {
-      case PIN1_ON:
-        currentInterval = pin1_interval;
-        break;
-      case PAUSE1:
-        currentInterval = pause_interval;
-        break;
-      case PIN2_ON:
-        currentInterval = pin2_interval;
-        break;
-      case PAUSE2:
-        currentInterval = pause_interval;
-        break;
+      Serial.println("=== LOSOWANIE CO MINUTĘ ===");
+      Serial.println("Wylosowana nazwa/numer: " + randomName);
+      Serial.println("===========================");
     }
 
-    if (currentMillis - previousMillis >= currentInterval)
-    {
-      previousMillis = currentMillis;
-
-      // Przejście do następnego stanu
-      switch (currentState)
-      {
-        case PIN1_ON:
-          // PIN1 był włączony, teraz pauza
-          digitalWrite(OUTPUT_PIN1, LOW);
-          digitalWrite(OUTPUT_PIN2, LOW);
-          currentState = PAUSE1;
-          break;
-
-        case PAUSE1:
-          // Koniec pauzy po PIN1, włącz PIN2
-          digitalWrite(OUTPUT_PIN1, LOW);
-          digitalWrite(OUTPUT_PIN2, HIGH);
-          currentState = PIN2_ON;
-          break;
-
-        case PIN2_ON:
-          // PIN2 był włączony, teraz pauza
-          digitalWrite(OUTPUT_PIN1, LOW);
-          digitalWrite(OUTPUT_PIN2, LOW);
-          currentState = PAUSE2;
-          break;
-
-        case PAUSE2:
-          // Koniec pauzy po PIN2, wróć do PIN1
-          digitalWrite(OUTPUT_PIN1, HIGH);
-          digitalWrite(OUTPUT_PIN2, LOW);
-          currentState = PIN1_ON;
-          break;
-      }
+    // Aktywuj sekwencję pinów, jeśli nie jest już aktywna
+    if (currentSequenceState == IDLE)
+    { // Upewnij się, że nie uruchamiasz nowej sekwencji, jeśli poprzednia jeszcze działa
+      startPinSequence();
     }
+
+    // Zaktualizuj czas ostatniego losowania (następne losowanie za minutę)
+    lastRandomTime = currentTime;
   }
-  else
+
+  // Jeśli sekwencja jest aktywna (czyli nie jest w stanie IDLE), to ją obsługuj
+  // Oraz sprawdzaj warunek zakończenia 5s lub przyciskiem
+  if (currentSequenceState != IDLE)
   {
-    // Przycisk nie naciśnięty - wyłącz oba wyjścia
-    digitalWrite(OUTPUT_PIN1, LOW);
-    digitalWrite(OUTPUT_PIN2, LOW);
-
-    // Reset stanu dla następnego naciśnięcia
-    currentState = PIN1_ON;
-    previousMillis = millis(); // Reset timera
+    handlePinSequence();
   }
-
-  // if (currentTime - lastRandomTime >= randomInterval)
-  // {
-  //   // Wylosuj i wypisz nazwę pliku
-  //   String randomName = getRandomFileName();
-  //   if (randomName != "")
-  //   {
-  //     Serial.println("=== LOSOWANIE CO MINUTĘ ===");
-  //     Serial.println("Wylosowana nazwa: " + randomName);
-  //     Serial.println("===========================");
-  //   }
-
-  //   // Zaktualizuj czas ostatniego losowania
-  //   lastRandomTime = currentTime;
-  // }
-
-  // Tutaj możesz dodać inne zadania loop
-  // np. obsługa przycisków, czujników itp.
 }
