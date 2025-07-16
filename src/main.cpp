@@ -278,8 +278,8 @@ void setup()
 
   // for debuging
   Serial.begin(115200);
-  while (!Serial)
-  {}
+  // while (!Serial)
+  // {}
 
   // Inicjalizacja generatora liczb losowych
   randomSeed(analogRead(0));
@@ -302,6 +302,7 @@ void setup()
 
   // Ustaw początkowy czas
   lastRandomTime = millis();
+  Serial.println("setup end");
 }
 
 void loop()
@@ -320,32 +321,34 @@ void loop()
   }
   lastButtonState = currentButtonState;
 
-  // Sekcja, która będzie aktywować sekwencję co minutę
-  if (currentTime - lastRandomTime >= randomInterval)
+  if (currentButtonState == HIGH)
   {
-    // Wylosuj i wypisz nazwę pliku (teraz to reprezentuje "numer")
-    String randomName = getRandomFileName();
-    if (randomName != "")
+    // Sekcja, która będzie aktywować sekwencję co minutę
+    if (currentTime - lastRandomTime >= randomInterval)
     {
-      Serial.println("=== LOSOWANIE CO MINUTĘ ===");
-      Serial.println("Wylosowana nazwa/numer: " + randomName);
-      Serial.println("===========================");
+      // Wylosuj i wypisz nazwę pliku (teraz to reprezentuje "numer")
+      String randomName = getRandomFileName();
+      if (randomName != "")
+      {
+        Serial.println("=== LOSOWANIE CO MINUTĘ ===");
+        Serial.println("Wylosowana nazwa/numer: " + randomName);
+        Serial.println("===========================");
+      }
+
+      // Aktywuj sekwencję pinów, jeśli nie jest już aktywna
+      if (currentSequenceState == IDLE)
+      { // Upewnij się, że nie uruchamiasz nowej sekwencji, jeśli poprzednia jeszcze działa
+        startPinSequence();
+      }
+
+      // Zaktualizuj czas ostatniego losowania (następne losowanie za minutę)
+      lastRandomTime = currentTime;
     }
-
-    // Aktywuj sekwencję pinów, jeśli nie jest już aktywna
-    if (currentSequenceState == IDLE)
-    { // Upewnij się, że nie uruchamiasz nowej sekwencji, jeśli poprzednia jeszcze działa
-      startPinSequence();
+    // Jeśli sekwencja jest aktywna (czyli nie jest w stanie IDLE), to ją obsługuj
+    // Oraz sprawdzaj warunek zakończenia 5s lub przyciskiem
+    if (currentSequenceState != IDLE)
+    {
+      handlePinSequence();
     }
-
-    // Zaktualizuj czas ostatniego losowania (następne losowanie za minutę)
-    lastRandomTime = currentTime;
-  }
-
-  // Jeśli sekwencja jest aktywna (czyli nie jest w stanie IDLE), to ją obsługuj
-  // Oraz sprawdzaj warunek zakończenia 5s lub przyciskiem
-  if (currentSequenceState != IDLE)
-  {
-    handlePinSequence();
   }
 }
