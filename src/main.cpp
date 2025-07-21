@@ -18,21 +18,36 @@
 #define SAMPLE_RATE 16000 // Częstotliwość próbkowania
 #define BUFFER_SIZE 512 // Rozmiar bufora
 
-enum SequenceState
+
+// ------------------------------ Stany FSM ------------------------------
+enum SystemState
 {
-  IDLE, // Stan spoczynku
-  PIN1_ON, // PIN1 włączony na 10ms
-  PAUSE1, // Pauza 20ms po PIN1
-  PIN2_ON, // PIN2 włączony na 10ms
-  PAUSE2 // Pauza 20ms po PIN2
+  STATE_IDLE,
+  STATE_RINGING,
+  STATE_AUDIO_PLAY
 };
 
-// Zmienne globalne dla sekwencji
-SequenceState currentSequenceState = IDLE;
-unsigned long previousMillisSequence = 0;
-unsigned long pin1_duration = 2; // 10ms dla PIN1
-unsigned long pause_duration = 25; // 20ms pauza
-unsigned long pin2_duration = 2; // 10ms dla PIN2
+SystemState currentState = STATE_IDLE;
+
+// ------------------------------ Stany sekwencji pinów ------------------------------
+enum SequenceState
+{
+  SEQ_IDLE,
+  SEQ_PIN1_ON,
+  SEQ_PAUSE1,
+  SEQ_PIN2_ON,
+  SEQ_PAUSE2
+};
+
+SequenceState sequenceState = SEQ_IDLE;
+
+unsigned long sequenceTimestamp = 0;
+const unsigned long pin1_duration = 2;
+const unsigned long pause_duration = 25;
+const unsigned long pin2_duration = 2;
+
+unsigned long buttonDebounceMillis = 0;
+bool buttonPressed = false;
 
 bool outputState = false;
 
@@ -41,16 +56,15 @@ bool isPlaying = false;
 
 std::vector<String> fileNames;
 
-// Zmienne globalne dla ogólnego timera (co minutę)
 unsigned long lastRandomTime = 0;
-const unsigned long randomInterval = 60000; // 1 minuta w milisekundach
+const unsigned long randomInterval = 60000; // 1 minuta
 
-// Zmienne globalne dla timera zakończenia sekwencji (5 sekund)
 unsigned long sequenceStartTime = 0;
-const unsigned long maxSequenceDuration = 5000; // 5 sekund w milisekundach
+const unsigned long maxSequenceDuration = 5000; // 5 sekund
 
 void setupI2SSpeaker()
 {
+  Serial.println("audio cofing start");
   i2s_config_t i2s_config = {.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX),
                              .sample_rate = SAMPLE_RATE,
                              .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
@@ -62,15 +76,18 @@ void setupI2SSpeaker()
                              .use_apll = false};
   i2s_pin_config_t pin_config = {
       .bck_io_num = I2S_SPK_BCK, .ws_io_num = I2S_SPK_WS, .data_out_num = I2S_SPK_DOUT, .data_in_num = I2S_PIN_NO_CHANGE};
-  i2s_driver_install(I2S_NUM_1, &i2s_config, 0, NULL);
-  i2s_set_pin(I2S_NUM_1, &pin_config);
+  esp_err_t err = i2s_driver_install(I2S_NUM_1, &i2s_config, 0, NULL);
+  Serial.println(esp_err_to_name(err));
+  err = i2s_set_pin(I2S_NUM_1, &pin_config);
+  Serial.println(esp_err_to_name(err));
+  Serial.println("audio cofing end");
 }
 
 // Funkcja do odtwarzania nagrania
 void playAudio()
 {
   Serial.println("Odtwarzanie...");
-  audioFile = SD.open("/recording.wav", FILE_READ);
+  audioFile = SD.open("/records/test1.wav", FILE_READ);
   if (!audioFile)
   {
     Serial.println("Błąd otwierania pliku!");
@@ -173,96 +190,99 @@ String getRandomFileName()
 
 void startPinSequence()
 {
-  Serial.println("Aktywacja sekwencji pinów.");
-  currentSequenceState = PIN1_ON;
-  previousMillisSequence = millis(); // Resetuj timer dla przejść w sekwencji
-  sequenceStartTime = millis(); // Zapisz czas rozpoczęcia całej sekwencji
-  digitalWrite(OUTPUT_PIN1, HIGH); // Włącz PIN1 od razu
+  sequenceState = SEQ_PIN1_ON;
+  sequenceTimestamp = millis();
+  sequenceStartTime = millis();
+  digitalWrite(OUTPUT_PIN1, HIGH);
   digitalWrite(OUTPUT_PIN2, LOW);
+  Serial.println("Start dzwonienia...");
 }
 
 void stopPinSequence()
 {
-  if (currentSequenceState != IDLE)
-  {
-    Serial.println("Sekwencja zakończona.");
-    digitalWrite(OUTPUT_PIN1, LOW);
-    digitalWrite(OUTPUT_PIN2, LOW);
-    currentSequenceState = IDLE;
-  }
+  sequenceState = SEQ_IDLE;
+  digitalWrite(OUTPUT_PIN1, LOW);
+  digitalWrite(OUTPUT_PIN2, LOW);
+  Serial.println("Zatrzymanie dzwonienia.");
 }
 
-void handlePinSequence()
+void handleSequence()
 {
-  unsigned long currentMillis = millis();
-  unsigned long currentDuration;
+  unsigned long now = millis();
 
-  // Sprawdź, czy sekwencja już trwa dłużej niż 5 sekund
-  if (currentMillis - sequenceStartTime >= maxSequenceDuration)
+  // Max czas
+  if (now - sequenceStartTime > maxSequenceDuration)
   {
-    stopPinSequence(); // Zatrzymaj sekwencję, jeśli przekroczono 5 sekund
+    stopPinSequence();
+    currentState = STATE_IDLE;
+    lastRandomTime = now;
     return;
   }
 
-  // Określ aktualny czas trwania na podstawie stanu
-  switch (currentSequenceState)
+  switch (sequenceState)
   {
-    case PIN1_ON:
-      currentDuration = pin1_duration;
-      break;
-    case PAUSE1:
-      currentDuration = pause_duration;
-      break;
-    case PIN2_ON:
-      currentDuration = pin2_duration;
-      break;
-    case PAUSE2:
-      currentDuration = pause_duration;
-      break;
-    case IDLE: // Nie powinno się tutaj znaleźć, ale zabezpieczenie
-      return;
-  }
-
-  if (currentMillis - previousMillisSequence >= currentDuration)
-  {
-    previousMillisSequence = currentMillis;
-
-    // Przejście do następnego stanu
-    switch (currentSequenceState)
-    {
-      case PIN1_ON:
-        // PIN1 był włączony, teraz pauza
+    case SEQ_PIN1_ON:
+      if (now - sequenceTimestamp >= pin1_duration)
+      {
         digitalWrite(OUTPUT_PIN1, LOW);
-        digitalWrite(OUTPUT_PIN2, LOW);
-        currentSequenceState = PAUSE1;
-        break;
+        sequenceState = SEQ_PAUSE1;
+        sequenceTimestamp = now;
+      }
+      break;
 
-      case PAUSE1:
-        // Koniec pauzy po PIN1, włącz PIN2
-        digitalWrite(OUTPUT_PIN1, LOW);
+    case SEQ_PAUSE1:
+      if (now - sequenceTimestamp >= pause_duration)
+      {
         digitalWrite(OUTPUT_PIN2, HIGH);
-        currentSequenceState = PIN2_ON;
-        break;
+        sequenceState = SEQ_PIN2_ON;
+        sequenceTimestamp = now;
+      }
+      break;
 
-      case PIN2_ON:
-        // PIN2 był włączony, teraz pauza
-        digitalWrite(OUTPUT_PIN1, LOW);
+    case SEQ_PIN2_ON:
+      if (now - sequenceTimestamp >= pin2_duration)
+      {
         digitalWrite(OUTPUT_PIN2, LOW);
-        currentSequenceState = PAUSE2;
-        break;
+        sequenceState = SEQ_PAUSE2;
+        sequenceTimestamp = now;
+      }
+      break;
 
-      case PAUSE2:
-        // Koniec pauzy po PIN2, wróć do PIN1 (sekwencja zapętla się)
-        // Jeśli chcemy, aby sekwencja zatrzymywała się po jednym przebiegu,
-        // zmieniamy to na stopPinSequence();
+    case SEQ_PAUSE2:
+      if (now - sequenceTimestamp >= pause_duration)
+      {
         digitalWrite(OUTPUT_PIN1, HIGH);
-        digitalWrite(OUTPUT_PIN2, LOW);
-        currentSequenceState = PIN1_ON; // Zapętlenie sekwencji
-        // previousMillisSequence = currentMillis; // Można zresetować timer tutaj dla świeżego startu nowego cyklu w ramach 5s
-        break;
-      case IDLE:
-        break; // Niewykorzystane, ale dla kompletności
-    }
+        sequenceState = SEQ_PIN1_ON;
+        sequenceTimestamp = now;
+      }
+      break;
+
+    case SEQ_IDLE:
+      // Nic nie rób
+      break;
+  }
+}
+
+void checkButton()
+{
+  // bool currentState = digitalRead(BUTTON_PIN);
+  // if (currentState && !buttonPressed && millis() - buttonDebounceMillis > 10)
+  // {
+  //   buttonPressed = true;
+  //   buttonDebounceMillis = millis();
+  // }
+
+  if (digitalRead(BUTTON_PIN) == LOW && currentState == STATE_RINGING)
+  {
+    // buttonPressed = false;
+
+    // // Obsługa przycisku zależnie od stanu
+    // if (currentState == STATE_RINGING)
+    // {
+    Serial.println("audio");
+    stopPinSequence();
+    currentState = STATE_AUDIO_PLAY;
+    // }
   }
 }
 
@@ -307,48 +327,34 @@ void setup()
 
 void loop()
 {
-  unsigned long currentTime = millis();
+  checkButton();
 
-  // Obsługa przycisku - jeśli naciśnięty, zatrzymaj sekwencję (jeśli aktywna)
-  // Przycisk działa jak "wyłącznik" / "reset"
-  static bool lastButtonState = HIGH; // Pamiętaj poprzedni stan przycisku
-  bool currentButtonState = digitalRead(BUTTON_PIN);
+  unsigned long now = millis();
 
-  if (currentButtonState == LOW && lastButtonState == HIGH) // Przycisk został naciśnięty (zbocze opadające)
+  switch (currentState)
   {
-    Serial.println("Przycisk naciśnięty - zatrzymanie sekwencji.");
-    stopPinSequence(); // Zatrzymaj sekwencję
-  }
-  lastButtonState = currentButtonState;
-
-  if (currentButtonState == HIGH)
-  {
-    // Sekcja, która będzie aktywować sekwencję co minutę
-    if (currentTime - lastRandomTime >= randomInterval)
-    {
-      // Wylosuj i wypisz nazwę pliku (teraz to reprezentuje "numer")
-      String randomName = getRandomFileName();
-      if (randomName != "")
+    case STATE_IDLE:
+      if (now - lastRandomTime >= randomInterval)
       {
-        Serial.println("=== LOSOWANIE CO MINUTĘ ===");
-        Serial.println("Wylosowana nazwa/numer: " + randomName);
-        Serial.println("===========================");
-      }
-
-      // Aktywuj sekwencję pinów, jeśli nie jest już aktywna
-      if (currentSequenceState == IDLE)
-      { // Upewnij się, że nie uruchamiasz nowej sekwencji, jeśli poprzednia jeszcze działa
+        String file = getRandomFileName();
+        if (file != "")
+        {
+          Serial.print("Wylosowano plik: ");
+          Serial.println(file);
+        }
         startPinSequence();
+        currentState = STATE_RINGING;
       }
+      break;
 
-      // Zaktualizuj czas ostatniego losowania (następne losowanie za minutę)
-      lastRandomTime = currentTime;
-    }
-    // Jeśli sekwencja jest aktywna (czyli nie jest w stanie IDLE), to ją obsługuj
-    // Oraz sprawdzaj warunek zakończenia 5s lub przyciskiem
-    if (currentSequenceState != IDLE)
-    {
-      handlePinSequence();
-    }
+    case STATE_RINGING:
+      handleSequence();
+      break;
+
+    case STATE_AUDIO_PLAY:
+      playAudio();
+      currentState = STATE_IDLE;
+      lastRandomTime = millis();
+      break;
   }
 }
