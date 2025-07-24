@@ -15,7 +15,6 @@
 #define OUTPUT_PIN1 12 // Pierwszy pin wyjściowy
 #define OUTPUT_PIN2 14 // Drugi pin wyjściowy
 
-#define SAMPLE_RATE 16000 // Częstotliwość próbkowania
 #define BUFFER_SIZE 512 // Rozmiar bufora
 
 
@@ -41,10 +40,12 @@ enum SequenceState
 
 SequenceState sequenceState = SEQ_IDLE;
 
+uint16_t sample_rate = 16000; // Częstotliwość próbkowania
+
 unsigned long sequenceTimestamp = 0;
-const unsigned long pin1_duration = 2;
-const unsigned long pause_duration = 25;
-const unsigned long pin2_duration = 2;
+const uint8_t pin1_duration = 2;
+const uint8_t pause_duration = 25;
+const uint8_t pin2_duration = 2;
 
 unsigned long buttonDebounceMillis = 0;
 bool buttonPressed = false;
@@ -57,7 +58,7 @@ bool isPlaying = false;
 std::vector<String> fileNames;
 
 unsigned long lastRandomTime = 0;
-const unsigned long randomInterval = 60000; // 1 minuta
+unsigned long randomInterval = 60000;
 
 unsigned long sequenceStartTime = 0;
 const unsigned long maxSequenceDuration = 5000; // 5 sekund
@@ -66,7 +67,7 @@ void setupI2SSpeaker()
 {
   Serial.println("audio cofing start");
   i2s_config_t i2s_config = {.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX),
-                             .sample_rate = SAMPLE_RATE,
+                             .sample_rate = sample_rate,
                              .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
                              .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
                              .communication_format = I2S_COMM_FORMAT_I2S,
@@ -160,15 +161,27 @@ void read_config()
     return;
   }
 
-  // Odczyt danych jako tekst
-  String configValue = configFile.readStringUntil('\n');
+  String intervalLine = configFile.readStringUntil('\n');
+  String rateLine = configFile.readStringUntil('\n');
   configFile.close();
 
-  // Konwersja na liczbę
-  int number = configValue.toInt();
+  // Konwersja na liczby
+  unsigned long interval = intervalLine.toInt();
+  unsigned long rate = rateLine.toInt();
 
-  Serial.print("Wartość odczytana z pliku: ");
-  Serial.println(number);
+  if (interval > 0) {
+    randomInterval = interval;
+  }
+
+  if (rate > 0) {
+    sample_rate = rate;
+  }
+
+  Serial.println("Wczytano config:");
+  Serial.print("randomInterval = ");
+  Serial.println(randomInterval);
+  Serial.print("sample_rate = ");
+  Serial.println(sample_rate);
 }
 
 String getRandomFileName()
@@ -314,11 +327,10 @@ void setup()
     Serial.println("SD załadowana");
   }
 
-  setupI2SSpeaker();
-
   listDir(SD, "/records", 0);
-
   read_config();
+
+  setupI2SSpeaker();
 
   // Ustaw początkowy czas
   lastRandomTime = millis();
