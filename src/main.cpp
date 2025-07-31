@@ -4,50 +4,44 @@
 #include <driver/i2s.h>
 #include <vector>
 
-// Karta SD
-#define SD_CS 5 // Pin CS dla karty SD
+const uint8_t sd_cs_pin = 5;
 
-// I2S Wzmacniacz (MAX98357)
-#define I2S_SPK_WS 25
-#define I2S_SPK_BCK 26
-#define I2S_SPK_DOUT 22
-#define BUTTON_PIN 4 // Pin wejściowy przycisku (z pull-up)
-#define OUTPUT_PIN1 12 // Pierwszy pin wyjściowy
-#define OUTPUT_PIN2 14 // Drugi pin wyjściowy
+const uint8_t speaker_ws_pin = 25;
+const uint8_t speaker_bck_pin = 26;
+const uint8_t speaker_dout_pin = 22;
+const uint8_t limit_switch_pin = 4;
+const uint8_t bell1_pin = 12;
+const uint8_t bell2_pin = 14;
 
-#define BUFFER_SIZE 512 // Rozmiar bufora
-
-
-// ------------------------------ Stany FSM ------------------------------
-enum SystemState
+enum class system_state
 {
-  STATE_IDLE,
-  STATE_RINGING,
-  STATE_AUDIO_PLAY
+  IDLE,
+  RINGING,
+  AUDIO_PLAY
 };
 
-SystemState currentState = STATE_IDLE;
+system_state currentState = system_state::IDLE;
 
-// ------------------------------ Stany sekwencji pinów ------------------------------
-enum SequenceState
+enum class sequence_state
 {
-  SEQ_IDLE,
-  SEQ_PIN1_ON,
-  SEQ_PAUSE1,
-  SEQ_PIN2_ON,
-  SEQ_PAUSE2
+  IDLE,
+  PIN1_ON,
+  PAUSE1,
+  PIN2_ON,
+  PAUSE2
 };
 
-SequenceState sequenceState = SEQ_IDLE;
+sequence_state sequenceState = sequence_state::IDLE;
 
-uint16_t sample_rate = 16000; // Częstotliwość próbkowania
+const uint16_t buffer_size = 512;
+uint16_t sample_rate = 16000;
 
 unsigned long sequenceTimestamp = 0;
 const uint8_t pin1_duration = 2;
 const uint8_t pause_duration = 25;
 const uint8_t pin2_duration = 2;
 
-unsigned long buttonDebounceMillis = 0;
+unsigned long debounce_filter_time = 10;
 bool buttonPressed = false;
 
 bool outputState = false;
@@ -55,13 +49,15 @@ bool outputState = false;
 File audioFile;
 bool isPlaying = false;
 
+String file;
+
 std::vector<String> fileNames;
 
 unsigned long lastRandomTime = 0;
 unsigned long randomInterval = 60000;
 
 unsigned long sequenceStartTime = 0;
-const unsigned long maxSequenceDuration = 5000; // 5 sekund
+const unsigned long maxSequenceDuration = 5000;
 
 void setupI2SSpeaker()
 {
@@ -73,10 +69,10 @@ void setupI2SSpeaker()
                              .communication_format = I2S_COMM_FORMAT_I2S,
                              .intr_alloc_flags = 0,
                              .dma_buf_count = 8,
-                             .dma_buf_len = BUFFER_SIZE,
+                             .dma_buf_len = buffer_size,
                              .use_apll = false};
   i2s_pin_config_t pin_config = {
-      .bck_io_num = I2S_SPK_BCK, .ws_io_num = I2S_SPK_WS, .data_out_num = I2S_SPK_DOUT, .data_in_num = I2S_PIN_NO_CHANGE};
+      .bck_io_num = speaker_bck_pin, .ws_io_num = speaker_ws_pin, .data_out_num = speaker_dout_pin, .data_in_num = I2S_PIN_NO_CHANGE};
   esp_err_t err = i2s_driver_install(I2S_NUM_1, &i2s_config, 0, NULL);
   Serial.println(esp_err_to_name(err));
   err = i2s_set_pin(I2S_NUM_1, &pin_config);
@@ -84,45 +80,49 @@ void setupI2SSpeaker()
   Serial.println("audio cofing end");
 }
 
-// Funkcja do odtwarzania nagrania
 void playAudio()
 {
-  Serial.println("Odtwarzanie...");
-  audioFile = SD.open("/records/test1.wav", FILE_READ);
+  Serial.println("playing audio...");
+  String file_path = "/records/" + file;
+  audioFile = SD.open(file_path, FILE_READ);
   if (!audioFile)
   {
-    Serial.println("Błąd otwierania pliku!");
+    Serial.println("error with audio file");
     return;
   }
 
   isPlaying = true;
+  i2s_start(I2S_NUM_1);
   size_t bytesRead;
-  int16_t buffer[BUFFER_SIZE];
+  int16_t buffer[buffer_size];
 
   while (audioFile.available())
   {
-    bytesRead = audioFile.read((uint8_t*)buffer, BUFFER_SIZE * sizeof(int16_t));
+    bytesRead = audioFile.read((uint8_t*)buffer, buffer_size * sizeof(int16_t));
     i2s_write(I2S_NUM_1, buffer, bytesRead, &bytesRead, portMAX_DELAY);
   }
 
   audioFile.close();
+
+  i2s_stop(I2S_NUM_1);
+
   isPlaying = false;
-  Serial.println("Odtwarzanie zakończone.");
+  Serial.println("playing end.");
 }
 
 void listDir(fs::FS& fs, const char* dirname, uint8_t levels)
 {
-  Serial.printf("Otwieranie katalogu: %s\n", dirname);
+  Serial.printf("open dir: %s\n", dirname);
 
   File root = fs.open(dirname);
   if (!root)
   {
-    Serial.println("Błąd: nie można otworzyć folderu");
+    Serial.println("error: cant open the folder");
     return;
   }
   if (!root.isDirectory())
   {
-    Serial.println("To nie jest katalog");
+    Serial.println("this isn't a folder");
     return;
   }
 
@@ -140,12 +140,11 @@ void listDir(fs::FS& fs, const char* dirname, uint8_t levels)
     }
     else
     {
-      Serial.print("FILE: ");
+      Serial.print("file: ");
       Serial.print(file.name());
-      Serial.print("  ROZMIAR: ");
+      Serial.print("  size: ");
       Serial.println(file.size());
 
-      // Dodaj nazwę pliku do globalnego wektora
       fileNames.push_back(String(file.name()));
     }
     file = root.openNextFile();
@@ -157,7 +156,7 @@ void read_config()
   File configFile = SD.open("/config.txt");
   if (!configFile)
   {
-    Serial.println("Nie udało się otworzyć config.txt");
+    Serial.println("can't open config.txt");
     return;
   }
 
@@ -165,20 +164,21 @@ void read_config()
   String rateLine = configFile.readStringUntil('\n');
   configFile.close();
 
-  // Konwersja na liczby
   unsigned long interval = intervalLine.toInt();
   unsigned long rate = rateLine.toInt();
 
-  if (interval > 0) {
+  if (interval > 0)
+  {
     randomInterval = interval;
   }
 
-  if (rate > 0) {
+  if (rate > 0)
+  {
     sample_rate = rate;
   }
 
-  Serial.println("Wczytano config:");
-  Serial.print("randomInterval = ");
+  Serial.println("Load config:");
+  Serial.print("random interval = ");
   Serial.println(randomInterval);
   Serial.print("sample_rate = ");
   Serial.println(sample_rate);
@@ -186,145 +186,139 @@ void read_config()
 
 String getRandomFileName()
 {
-  // Sprawdź czy wektor nie jest pusty
   if (fileNames.size() == 0)
   {
-    Serial.println("Błąd: brak plików w wektorze!");
+    Serial.println("error: no audio file");
     return "";
   }
 
   // Wylosuj indeks z przedziału 0 do (rozmiar_wektora - 1)
   int randomIndex = random(0, fileNames.size());
 
-  Serial.printf("Wylosowano plik o indeksie %d: %s\n", randomIndex, fileNames[randomIndex].c_str());
+  Serial.printf("file with number %d: %s\n", randomIndex, fileNames[randomIndex].c_str());
 
   return fileNames[randomIndex];
 }
 
 void startPinSequence()
 {
-  sequenceState = SEQ_PIN1_ON;
+  sequenceState = sequence_state::PIN1_ON;
   sequenceTimestamp = millis();
   sequenceStartTime = millis();
-  digitalWrite(OUTPUT_PIN1, HIGH);
-  digitalWrite(OUTPUT_PIN2, LOW);
-  Serial.println("Start dzwonienia...");
+  digitalWrite(bell1_pin, HIGH);
+  digitalWrite(bell2_pin, LOW);
+  Serial.println("ringing...");
 }
 
 void stopPinSequence()
 {
-  sequenceState = SEQ_IDLE;
-  digitalWrite(OUTPUT_PIN1, LOW);
-  digitalWrite(OUTPUT_PIN2, LOW);
-  Serial.println("Zatrzymanie dzwonienia.");
+  sequenceState = sequence_state::IDLE;
+  digitalWrite(bell1_pin, LOW);
+  digitalWrite(bell2_pin, LOW);
+  Serial.println("stop ringing");
 }
 
 void handleSequence()
 {
   unsigned long now = millis();
 
-  // Max czas
   if (now - sequenceStartTime > maxSequenceDuration)
   {
     stopPinSequence();
-    currentState = STATE_IDLE;
+    currentState = system_state::IDLE;
     lastRandomTime = now;
     return;
   }
 
   switch (sequenceState)
   {
-    case SEQ_PIN1_ON:
+    case sequence_state::PIN1_ON:
       if (now - sequenceTimestamp >= pin1_duration)
       {
-        digitalWrite(OUTPUT_PIN1, LOW);
-        sequenceState = SEQ_PAUSE1;
+        digitalWrite(bell1_pin, LOW);
+        sequenceState = sequence_state::PAUSE1;
         sequenceTimestamp = now;
       }
       break;
 
-    case SEQ_PAUSE1:
+    case sequence_state::PAUSE1:
       if (now - sequenceTimestamp >= pause_duration)
       {
-        digitalWrite(OUTPUT_PIN2, HIGH);
-        sequenceState = SEQ_PIN2_ON;
+        digitalWrite(bell2_pin, HIGH);
+        sequenceState = sequence_state::PIN2_ON;
         sequenceTimestamp = now;
       }
       break;
 
-    case SEQ_PIN2_ON:
+    case sequence_state::PIN2_ON:
       if (now - sequenceTimestamp >= pin2_duration)
       {
-        digitalWrite(OUTPUT_PIN2, LOW);
-        sequenceState = SEQ_PAUSE2;
+        digitalWrite(bell2_pin, LOW);
+        sequenceState = sequence_state::PAUSE2;
         sequenceTimestamp = now;
       }
       break;
 
-    case SEQ_PAUSE2:
+    case sequence_state::PAUSE2:
       if (now - sequenceTimestamp >= pause_duration)
       {
-        digitalWrite(OUTPUT_PIN1, HIGH);
-        sequenceState = SEQ_PIN1_ON;
+        digitalWrite(bell1_pin, HIGH);
+        sequenceState = sequence_state::PIN1_ON;
         sequenceTimestamp = now;
       }
       break;
 
-    case SEQ_IDLE:
-      // Nic nie rób
+    case sequence_state::IDLE:
       break;
   }
 }
 
 void checkButton()
 {
-  // bool currentState = digitalRead(BUTTON_PIN);
-  // if (currentState && !buttonPressed && millis() - buttonDebounceMillis > 10)
+  static unsigned long last_button_change_time = 0;
+  static bool last_button_state = HIGH;
+  bool reading = digitalRead(limit_switch_pin);
+  // if (digitalRead(limit_switch_pin) == LOW && currentState == system_state::RINGING)
   // {
-  //   buttonPressed = true;
-  //   buttonDebounceMillis = millis();
+  //   Serial.println("audio");
+  //   stopPinSequence();
+  //   currentState = system_state::AUDIO_PLAY;
   // }
 
-  if (digitalRead(BUTTON_PIN) == LOW && currentState == STATE_RINGING)
+  if (reading != last_button_state)
   {
-    // buttonPressed = false;
-
-    // // Obsługa przycisku zależnie od stanu
-    // if (currentState == STATE_RINGING)
-    // {
-    Serial.println("audio");
-    stopPinSequence();
-    currentState = STATE_AUDIO_PLAY;
-    // }
+    last_button_change_time = millis();
   }
+  if ((millis() - last_button_change_time) > debounce_filter_time && reading == LOW)
+  {
+      Serial.println("audio");
+      stopPinSequence();
+      currentState = system_state::AUDIO_PLAY;
+  }
+  last_button_state = reading;
 }
 
 void setup()
 {
-  pinMode(BUTTON_PIN, INPUT_PULLUP); // Przycisk z wewnętrznym pull-up
-  pinMode(OUTPUT_PIN1, OUTPUT); // Pierwszy pin wyjściowy
-  pinMode(OUTPUT_PIN2, OUTPUT); // Drugi pin wyjściowy
+  pinMode(limit_switch_pin, INPUT_PULLUP);
+  pinMode(bell1_pin, OUTPUT);
+  pinMode(bell2_pin, OUTPUT);
 
-  // Początkowy stan - oba wyjścia wyłączone
-  digitalWrite(OUTPUT_PIN1, LOW);
-  digitalWrite(OUTPUT_PIN2, LOW);
+  digitalWrite(bell1_pin, LOW);
+  digitalWrite(bell2_pin, LOW);
 
-  // for debuging
   Serial.begin(115200);
-  // while (!Serial)
-  // {}
 
-  // Inicjalizacja generatora liczb losowych
   randomSeed(analogRead(0));
 
-  if (!SD.begin(SD_CS))
+  if (!SD.begin(sd_cs_pin))
   {
-    Serial.println("Błąd inicjalizacji karty SD!");
+    Serial.println("SD card error");
     return;
   }
   else
   {
-    Serial.println("SD załadowana");
+    Serial.println("SD card ok");
   }
 
   listDir(SD, "/records", 0);
@@ -332,40 +326,38 @@ void setup()
 
   setupI2SSpeaker();
 
-  // Ustaw początkowy czas
   lastRandomTime = millis();
   Serial.println("setup end");
 }
 
 void loop()
 {
-  checkButton();
-
   unsigned long now = millis();
 
   switch (currentState)
   {
-    case STATE_IDLE:
-      if (now - lastRandomTime >= randomInterval)
+    case system_state::IDLE:
+      if ((now - lastRandomTime >= randomInterval) && (digitalRead(limit_switch_pin) == HIGH))
       {
-        String file = getRandomFileName();
+        file = getRandomFileName();
         if (file != "")
         {
-          Serial.print("Wylosowano plik: ");
+          Serial.print("file name: ");
           Serial.println(file);
         }
         startPinSequence();
-        currentState = STATE_RINGING;
+        currentState = system_state::RINGING;
       }
       break;
 
-    case STATE_RINGING:
+    case system_state::RINGING:
+      checkButton();
       handleSequence();
       break;
 
-    case STATE_AUDIO_PLAY:
+    case system_state::AUDIO_PLAY:
       playAudio();
-      currentState = STATE_IDLE;
+      currentState = system_state::IDLE;
       lastRandomTime = millis();
       break;
   }
