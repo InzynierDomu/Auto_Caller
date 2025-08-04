@@ -33,6 +33,15 @@ enum class sequence_state
 
 sequence_state sequenceState = sequence_state::IDLE;
 
+enum class bell_state
+{
+  IDLE,
+  RING,
+  PAUSE
+};
+
+bell_state bell = bell_state::IDLE;
+
 const uint16_t buffer_size = 512;
 uint16_t sample_rate = 16000;
 
@@ -40,6 +49,10 @@ unsigned long sequenceTimestamp = 0;
 const uint8_t pin1_duration = 2;
 const uint8_t pause_duration = 25;
 const uint8_t pin2_duration = 2;
+const unsigned long ringing_pause_time = 4000;
+unsigned long pause_time = 0;
+const int cycles_num = 3;
+int current_cycles = 0;
 
 unsigned long debounce_filter_time = 10;
 bool buttonPressed = false;
@@ -57,7 +70,7 @@ unsigned long lastRandomTime = 0;
 unsigned long randomInterval = 60000;
 
 unsigned long sequenceStartTime = 0;
-const unsigned long maxSequenceDuration = 5000;
+const unsigned long maxSequenceDuration = 2000;
 
 void setupI2SSpeaker()
 {
@@ -215,7 +228,10 @@ void stopPinSequence()
   sequenceState = sequence_state::IDLE;
   digitalWrite(bell1_pin, LOW);
   digitalWrite(bell2_pin, LOW);
+  current_cycles++;
+  pause_time = millis();
   Serial.println("stop ringing");
+  bell = bell_state::PAUSE;
 }
 
 void handleSequence()
@@ -225,7 +241,6 @@ void handleSequence()
   if (now - sequenceStartTime > maxSequenceDuration)
   {
     stopPinSequence();
-    currentState = system_state::IDLE;
     lastRandomTime = now;
     return;
   }
@@ -273,17 +288,46 @@ void handleSequence()
   }
 }
 
+void startMasterSequence()
+{
+  bell = bell_state::RING;
+  current_cycles = 0;
+  Serial.println("Master sequence started");
+  startPinSequence();
+}
+
+void handleMasterSequence()
+{
+  switch (bell)
+  {
+    case bell_state::IDLE:
+      break;
+
+    case bell_state::RING:
+      handleSequence();
+      if (current_cycles == cycles_num)
+      {
+        Serial.println("Master sequence done.");
+        bell_state::IDLE;
+        currentState = system_state::IDLE;
+      }
+      break;
+
+    case bell_state::PAUSE:
+      if (millis() - pause_time >= ringing_pause_time)
+      {
+        bell = bell_state::RING;
+        startPinSequence();
+      }
+      break;
+  }
+}
+
 void checkButton()
 {
   static unsigned long last_button_change_time = 0;
   static bool last_button_state = HIGH;
   bool reading = digitalRead(limit_switch_pin);
-  // if (digitalRead(limit_switch_pin) == LOW && currentState == system_state::RINGING)
-  // {
-  //   Serial.println("audio");
-  //   stopPinSequence();
-  //   currentState = system_state::AUDIO_PLAY;
-  // }
 
   if (reading != last_button_state)
   {
@@ -291,9 +335,9 @@ void checkButton()
   }
   if ((millis() - last_button_change_time) > debounce_filter_time && reading == LOW)
   {
-      Serial.println("audio");
-      stopPinSequence();
-      currentState = system_state::AUDIO_PLAY;
+    Serial.println("audio");
+    stopPinSequence();
+    currentState = system_state::AUDIO_PLAY;
   }
   last_button_state = reading;
 }
@@ -345,14 +389,14 @@ void loop()
           Serial.print("file name: ");
           Serial.println(file);
         }
-        startPinSequence();
+        startMasterSequence();
         currentState = system_state::RINGING;
       }
       break;
 
     case system_state::RINGING:
       checkButton();
-      handleSequence();
+      handleMasterSequence();
       break;
 
     case system_state::AUDIO_PLAY:
