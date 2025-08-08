@@ -4,14 +4,13 @@
 #include <driver/i2s.h>
 #include <vector>
 
-const uint8_t sd_cs_pin = 5;
-
-const uint8_t speaker_ws_pin = 25;
-const uint8_t speaker_bck_pin = 26;
-const uint8_t speaker_dout_pin = 22;
-const uint8_t limit_switch_pin = 4;
-const uint8_t bell1_pin = 12;
-const uint8_t bell2_pin = 14;
+constexpr uint8_t sd_cs_pin = 5;
+constexpr uint8_t speaker_ws_pin = 25;
+constexpr uint8_t speaker_bck_pin = 26;
+constexpr uint8_t speaker_dout_pin = 22;
+constexpr uint8_t limit_switch_pin = 4;
+constexpr uint8_t bell1_pin = 12;
+constexpr uint8_t bell2_pin = 14;
 
 enum class system_state
 {
@@ -308,7 +307,7 @@ void handleMasterSequence()
       if (current_cycles == cycles_num)
       {
         Serial.println("Master sequence done.");
-        bell_state::IDLE;
+        bell = bell_state::IDLE;
         currentState = system_state::IDLE;
       }
       break;
