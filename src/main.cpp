@@ -50,7 +50,7 @@ const uint8_t pause_duration = 25;
 const uint8_t pin2_duration = 2;
 const unsigned long ringing_pause_time = 4000;
 unsigned long pause_time = 0;
-const int cycles_num = 3;
+int cycles_num = 3;
 int current_cycles = 0;
 
 unsigned long debounce_filter_time = 10;
@@ -174,10 +174,12 @@ void read_config()
 
   String intervalLine = configFile.readStringUntil('\n');
   String rateLine = configFile.readStringUntil('\n');
+  String cycles_count = configFile.readStringUntil('\n');
   configFile.close();
 
   unsigned long interval = intervalLine.toInt();
   unsigned long rate = rateLine.toInt();
+  uint8_t cycles = cycles_count.toInt();
 
   if (interval > 0)
   {
@@ -189,11 +191,18 @@ void read_config()
     sample_rate = rate;
   }
 
+  if (cycles > 0)
+  {
+    cycles_num = cycles;
+  }
+
   Serial.println("Load config:");
   Serial.print("random interval = ");
   Serial.println(randomInterval);
   Serial.print("sample_rate = ");
   Serial.println(sample_rate);
+  Serial.print("cycles_count = ");
+  Serial.println(cycles_count);
 }
 
 String getRandomFileName()

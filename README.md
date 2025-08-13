@@ -17,6 +17,8 @@ Device for regular bell ringing and playing random audio files from SD card usin
 - Configurable ringing interval and audio sampling rate via `config.txt`.
 - I2S output for playing audio through external DAC or speaker.
 
+![photo](https://www.inzynierdomu.pl/wp-content/uploads/2019/12/stary-telefon-scaled.jpg)
+
 <div align="center">
 <h2>Support</h2>
 

@@ -1,0 +1,257 @@
+Log started at: Wed 08/13/2025 13:00:10.49
+PlatformIO is not installed. Proceeding with installation...
+Defaulting to user installation because normal site-packages is not writeable
+Collecting platformio
+  Using cached platformio-6.1.18-py3-none-any.whl.metadata (7.1 kB)
+Collecting bottle==0.13.* (from platformio)
+  Downloading bottle-0.13.4-py2.py3-none-any.whl.metadata (1.6 kB)
+Collecting click<8.1.8,>=8.0.4 (from platformio)
+  Using cached click-8.1.7-py3-none-any.whl.metadata (3.0 kB)
+Collecting colorama (from platformio)
+  Using cached colorama-0.4.6-py2.py3-none-any.whl.metadata (17 kB)
+Collecting marshmallow==3.* (from platformio)
+  Using cached marshmallow-3.26.1-py3-none-any.whl.metadata (7.3 kB)
+Collecting pyelftools<1,>=0.27 (from platformio)
+  Using cached pyelftools-0.32-py3-none-any.whl.metadata (372 bytes)
+Collecting pyserial==3.5.* (from platformio)
+  Using cached pyserial-3.5-py2.py3-none-any.whl.metadata (1.6 kB)
+Collecting requests==2.* (from platformio)
+  Downloading requests-2.32.4-py3-none-any.whl.metadata (4.9 kB)
+Collecting semantic_version==2.10.* (from platformio)
+  Using cached semantic_version-2.10.0-py2.py3-none-any.whl.metadata (9.7 kB)
+Collecting tabulate==0.* (from platformio)
+  Using cached tabulate-0.9.0-py3-none-any.whl.metadata (34 kB)
+Collecting ajsonrpc==1.2.* (from platformio)
+  Using cached ajsonrpc-1.2.0-py3-none-any.whl.metadata (6.9 kB)
+Collecting starlette<0.47,>=0.19 (from platformio)
+  Downloading starlette-0.46.2-py3-none-any.whl.metadata (6.2 kB)
+Collecting uvicorn<0.35,>=0.16 (from platformio)
+  Downloading uvicorn-0.34.3-py3-none-any.whl.metadata (6.5 kB)
+Collecting wsproto==1.* (from platformio)
+  Using cached wsproto-1.2.0-py3-none-any.whl.metadata (5.6 kB)
+Collecting packaging>=17.0 (from marshmallow==3.*->platformio)
+  Downloading packaging-25.0-py3-none-any.whl.metadata (3.3 kB)
+Collecting charset_normalizer<4,>=2 (from requests==2.*->platformio)
+  Downloading charset_normalizer-3.4.3-cp313-cp313-win_amd64.whl.metadata (37 kB)
+Collecting idna<4,>=2.5 (from requests==2.*->platformio)
+  Using cached idna-3.10-py3-none-any.whl.metadata (10 kB)
+Collecting urllib3<3,>=1.21.1 (from requests==2.*->platformio)
+  Downloading urllib3-2.5.0-py3-none-any.whl.metadata (6.5 kB)
+Collecting certifi>=2017.4.17 (from requests==2.*->platformio)
+  Downloading certifi-2025.8.3-py3-none-any.whl.metadata (2.4 kB)
+Collecting anyio<5,>=3.6.2 (from starlette<0.47,>=0.19->platformio)
+  Downloading anyio-4.10.0-py3-none-any.whl.metadata (4.0 kB)
+Collecting sniffio>=1.1 (from anyio<5,>=3.6.2->starlette<0.47,>=0.19->platformio)
+  Using cached sniffio-1.3.1-py3-none-any.whl.metadata (3.9 kB)
+Collecting h11>=0.8 (from uvicorn<0.35,>=0.16->platformio)
+  Downloading h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+Using cached platformio-6.1.18-py3-none-any.whl (420 kB)
+Using cached ajsonrpc-1.2.0-py3-none-any.whl (22 kB)
+Downloading bottle-0.13.4-py2.py3-none-any.whl (103 kB)
+Using cached click-8.1.7-py3-none-any.whl (97 kB)
+Using cached marshmallow-3.26.1-py3-none-any.whl (50 kB)
+Using cached pyelftools-0.32-py3-none-any.whl (188 kB)
+Using cached pyserial-3.5-py2.py3-none-any.whl (90 kB)
+Downloading requests-2.32.4-py3-none-any.whl (64 kB)
+Downloading charset_normalizer-3.4.3-cp313-cp313-win_amd64.whl (107 kB)
+Using cached idna-3.10-py3-none-any.whl (70 kB)
+Using cached semantic_version-2.10.0-py2.py3-none-any.whl (15 kB)
+Downloading starlette-0.46.2-py3-none-any.whl (72 kB)
+Downloading anyio-4.10.0-py3-none-any.whl (107 kB)
+Using cached tabulate-0.9.0-py3-none-any.whl (35 kB)
+Downloading urllib3-2.5.0-py3-none-any.whl (129 kB)
+Downloading uvicorn-0.34.3-py3-none-any.whl (62 kB)
+Using cached wsproto-1.2.0-py3-none-any.whl (24 kB)
+Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+Downloading certifi-2025.8.3-py3-none-any.whl (161 kB)
+Downloading packaging-25.0-py3-none-any.whl (66 kB)
+Using cached sniffio-1.3.1-py3-none-any.whl (10 kB)
+Using cached colorama-0.4.6-py2.py3-none-any.whl (25 kB)
+Installing collected packages: pyserial, pyelftools, bottle, urllib3, tabulate, sniffio, semantic_version, packaging, idna, h11, colorama, charset_normalizer, certifi, ajsonrpc, wsproto, requests, marshmallow, click, anyio, uvicorn, starlette, platformio
+  WARNING: The scripts pyserial-miniterm.exe and pyserial-ports.exe are installed in 'C:\Users\markiszy\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\Scripts' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
+  WARNING: The script bottle.exe is installed in 'C:\Users\markiszy\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\Scripts' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
+  WARNING: The script tabulate.exe is installed in 'C:\Users\markiszy\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\Scripts' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
+  WARNING: The script normalizer.exe is installed in 'C:\Users\markiszy\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\Scripts' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
+  WARNING: The script async-json-rpc-server.exe is installed in 'C:\Users\markiszy\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\Scripts' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
+  WARNING: The script uvicorn.exe is installed in 'C:\Users\markiszy\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\Scripts' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
+  WARNING: The scripts pio.exe, piodebuggdb.exe and platformio.exe are installed in 'C:\Users\markiszy\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\Scripts' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
+
+Successfully installed ajsonrpc-1.2.0 anyio-4.10.0 bottle-0.13.4 certifi-2025.8.3 charset_normalizer-3.4.3 click-8.1.7 colorama-0.4.6 h11-0.16.0 idna-3.10 marshmallow-3.26.1 packaging-25.0 platformio-6.1.18 pyelftools-0.32 pyserial-3.5 requests-2.32.4 semantic_version-2.10.0 sniffio-1.3.1 starlette-0.46.2 tabulate-0.9.0 urllib3-2.5.0 uvicorn-0.34.3 wsproto-1.2.0
+PlatformIO has been successfully installed.
+Name: platformio
+Version: 6.1.18
+Summary: Your Gateway to Embedded Software Development Excellence. Unlock the true potential of embedded software development with PlatformIO's collaborative ecosystem, embracing declarative principles, test-driven methodologies, and modern toolchains for unrivaled success.
+Home-page: https://platformio.org
+Author: PlatformIO Labs
+Author-email: contact@piolabs.com
+License: Apache Software License
+Location: C:\Users\markiszy\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages
+Requires: ajsonrpc, bottle, click, colorama, marshmallow, pyelftools, pyserial, requests, semantic_version, starlette, tabulate, uvicorn, wsproto
+Required-by: 
+Processing denky32 (platform: espressif32; board: upesy_wroom; framework: arduino)
+--------------------------------------------------------------------------------
+Verbose mode can be enabled via `-v, --verbose` option
+CONFIGURATION: https://docs.platformio.org/page/boards/espressif32/upesy_wroom.html
+PLATFORM: Espressif 32 (6.10.0) > uPesy ESP32 Wroom DevKit
+HARDWARE: ESP32 240MHz, 320KB RAM, 4MB Flash
+DEBUG: Current (cmsis-dap) External (cmsis-dap, esp-bridge, esp-prog, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa)
+PACKAGES: 
+ - framework-arduinoespressif32 @ 3.20017.241212+sha.dcc1105b 
+ - tool-esptoolpy @ 1.40501.0 (4.5.1) 
+ - tool-mkfatfs @ 2.0.1 
+ - tool-mklittlefs @ 1.203.210628 (2.3) 
+ - tool-mkspiffs @ 2.230.0 (2.30) 
+ - toolchain-xtensa-esp32 @ 8.4.0+2021r2-patch5
+LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
+LDF Modes: Finder ~ chain, Compatibility ~ soft
+Found 33 compatible libraries
+Scanning dependencies...
+Dependency Graph
+|-- SD @ 2.0.0
+|-- SPI @ 2.0.0
+Building in release mode
+Compiling .pio\build\denky32\src\main.cpp.o
+Building .pio\build\denky32\bootloader.bin
+Generating partitions .pio\build\denky32\partitions.bin
+Compiling .pio\build\denky32\liba33\FS\FS.cpp.o
+Compiling .pio\build\denky32\liba33\FS\vfs_api.cpp.o
+esptool.py v4.5.1
+Creating esp32 image...
+Merged 1 ELF section
+Successfully created esp32 image.
+Compiling .pio\build\denky32\lib12e\SPI\SPI.cpp.o
+Compiling .pio\build\denky32\lib992\SD\SD.cpp.o
+Compiling .pio\build\denky32\lib992\SD\sd_diskio.cpp.o
+Compiling .pio\build\denky32\lib992\SD\sd_diskio_crc.c.o
+src/main.cpp: In function 'void setupI2SSpeaker()':
+src/main.cpp:81:54: warning: 'I2S_COMM_FORMAT_I2S' is deprecated [-Wdeprecated-declarations]
+                              .communication_format = I2S_COMM_FORMAT_I2S,
+                                                      ^~~~~~~~~~~~~~~~~~~
+In file included from C:/Users/markiszy/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/driver/include/driver/i2s.h:16,
+                 from src/main.cpp:4:
+C:/Users/markiszy/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/hal/include/hal/i2s_types.h:87:5: note: declared here
+     I2S_COMM_FORMAT_I2S       __attribute__((deprecated)) = 0x01, /*!< I2S communication format I2S, correspond to `I2S_COMM_FORMAT_STAND_I2S`*/
+     ^~~~~~~~~~~~~~~~~~~
+Compiling .pio\build\denky32\FrameworkArduino\Esp.cpp.o
+Archiving .pio\build\denky32\lib12e\libSPI.a
+Compiling .pio\build\denky32\FrameworkArduino\FirmwareMSC.cpp.o
+Compiling .pio\build\denky32\FrameworkArduino\FunctionalInterrupt.cpp.o
+Compiling .pio\build\denky32\FrameworkArduino\HWCDC.cpp.o
+Archiving .pio\build\denky32\liba33\libFS.a
+Compiling .pio\build\denky32\FrameworkArduino\HardwareSerial.cpp.o
+Compiling .pio\build\denky32\FrameworkArduino\IPAddress.cpp.o
+Compiling .pio\build\denky32\FrameworkArduino\IPv6Address.cpp.o
+Compiling .pio\build\denky32\FrameworkArduino\MD5Builder.cpp.o
+Compiling .pio\build\denky32\FrameworkArduino\Print.cpp.o
+Compiling .pio\build\denky32\FrameworkArduino\Stream.cpp.o
+Compiling .pio\build\denky32\FrameworkArduino\StreamString.cpp.o
+Compiling .pio\build\denky32\FrameworkArduino\Tone.cpp.o
+Compiling .pio\build\denky32\FrameworkArduino\USB.cpp.o
+Compiling .pio\build\denky32\FrameworkArduino\USBCDC.cpp.o
+Compiling .pio\build\denky32\FrameworkArduino\USBMSC.cpp.o
+Compiling .pio\build\denky32\FrameworkArduino\WMath.cpp.o
+Compiling .pio\build\denky32\FrameworkArduino\WString.cpp.o
+Compiling .pio\build\denky32\FrameworkArduino\base64.cpp.o
+Archiving .pio\build\denky32\lib992\libSD.a
+Compiling .pio\build\denky32\FrameworkArduino\cbuf.cpp.o
+Compiling .pio\build\denky32\FrameworkArduino\esp32-hal-adc.c.o
+Compiling .pio\build\denky32\FrameworkArduino\esp32-hal-bt.c.o
+Compiling .pio\build\denky32\FrameworkArduino\esp32-hal-cpu.c.o
+Compiling .pio\build\denky32\FrameworkArduino\esp32-hal-dac.c.o
+Compiling .pio\build\denky32\FrameworkArduino\esp32-hal-gpio.c.o
+Compiling .pio\build\denky32\FrameworkArduino\esp32-hal-i2c-slave.c.o
+Compiling .pio\build\denky32\FrameworkArduino\esp32-hal-i2c.c.o
+Compiling .pio\build\denky32\FrameworkArduino\esp32-hal-ledc.c.o
+Compiling .pio\build\denky32\FrameworkArduino\esp32-hal-matrix.c.o
+Compiling .pio\build\denky32\FrameworkArduino\esp32-hal-misc.c.o
+Compiling .pio\build\denky32\FrameworkArduino\esp32-hal-psram.c.o
+Compiling .pio\build\denky32\FrameworkArduino\esp32-hal-rgb-led.c.o
+Compiling .pio\build\denky32\FrameworkArduino\esp32-hal-rmt.c.o
+Compiling .pio\build\denky32\FrameworkArduino\esp32-hal-sigmadelta.c.o
+Compiling .pio\build\denky32\FrameworkArduino\esp32-hal-spi.c.o
+Compiling .pio\build\denky32\FrameworkArduino\esp32-hal-time.c.o
+Compiling .pio\build\denky32\FrameworkArduino\esp32-hal-timer.c.o
+Compiling .pio\build\denky32\FrameworkArduino\esp32-hal-tinyusb.c.o
+Compiling .pio\build\denky32\FrameworkArduino\esp32-hal-touch.c.o
+Compiling .pio\build\denky32\FrameworkArduino\esp32-hal-uart.c.o
+Compiling .pio\build\denky32\FrameworkArduino\firmware_msc_fat.c.o
+Compiling .pio\build\denky32\FrameworkArduino\libb64\cdecode.c.o
+Compiling .pio\build\denky32\FrameworkArduino\libb64\cencode.c.o
+Compiling .pio\build\denky32\FrameworkArduino\main.cpp.o
+Compiling .pio\build\denky32\FrameworkArduino\stdlib_noniso.c.o
+Compiling .pio\build\denky32\FrameworkArduino\wiring_pulse.c.o
+Compiling .pio\build\denky32\FrameworkArduino\wiring_shift.c.o
+Archiving .pio\build\denky32\libFrameworkArduino.a
+Linking .pio\build\denky32\firmware.elf
+Retrieving maximum program size .pio\build\denky32\firmware.elf
+Checking size .pio\build\denky32\firmware.elf
+Advanced Memory Usage is available via "PlatformIO Home > Project Inspect"
+RAM:   [=         ]   6.9% (used 22504 bytes from 327680 bytes)
+Flash: [===       ]  27.2% (used 355941 bytes from 1310720 bytes)
+Building .pio\build\denky32\firmware.bin
+esptool.py v4.5.1
+Creating esp32 image...
+Merged 2 ELF sections
+Successfully created esp32 image.
+Configuring upload protocol...
+AVAILABLE: cmsis-dap, esp-bridge, esp-prog, espota, esptool, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa
+CURRENT: upload_protocol = esptool
+Looking for upload port...
+Auto-detected: COM4
+Uploading .pio\build\denky32\firmware.bin
+esptool.py v4.5.1
+Serial port COM4
+Connecting....
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: 3c:8a:1f:a8:48:14
+Uploading stub...
+Running stub...
+Stub running...
+Changing baud rate to 460800
+Changed.
+Configuring flash size...
+Flash will be erased from 0x00001000 to 0x00005fff...
+Flash will be erased from 0x00008000 to 0x00008fff...
+Flash will be erased from 0x0000e000 to 0x0000ffff...
+Flash will be erased from 0x00010000 to 0x00066fff...
+Compressed 18992 bytes to 13110...
+Writing at 0x00001000... (100 %)
+Wrote 18992 bytes (13110 compressed) at 0x00001000 in 0.5 seconds (effective 305.9 kbit/s)...
+Hash of data verified.
+Compressed 3072 bytes to 146...
+Writing at 0x00008000... (100 %)
+Wrote 3072 bytes (146 compressed) at 0x00008000 in 0.0 seconds (effective 676.0 kbit/s)...
+Hash of data verified.
+Compressed 8192 bytes to 47...
+Writing at 0x0000e000... (100 %)
+Wrote 8192 bytes (47 compressed) at 0x0000e000 in 0.1 seconds (effective 940.6 kbit/s)...
+Hash of data verified.
+Compressed 356304 bytes to 206998...
+Writing at 0x00010000... (7 %)
+Writing at 0x0001abd7... (15 %)
+Writing at 0x0002752e... (23 %)
+Writing at 0x0002c974... (30 %)
+Writing at 0x00031fd2... (38 %)
+Writing at 0x0003778d... (46 %)
+Writing at 0x0003d1e1... (53 %)
+Writing at 0x00042940... (61 %)
+Writing at 0x00047a42... (69 %)
+Writing at 0x0004cf06... (76 %)
+Writing at 0x000527e9... (84 %)
+Writing at 0x0005bb31... (92 %)
+Writing at 0x00063615... (100 %)
+Wrote 356304 bytes (206998 compressed) at 0x00010000 in 5.0 seconds (effective 573.2 kbit/s)...
+Hash of data verified.
+
+Leaving...
+Hard resetting via RTS pin...
+========================= [SUCCESS] Took 26.46 seconds =========================
